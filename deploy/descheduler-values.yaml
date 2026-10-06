@@ -1,0 +1,44 @@
+# For the official kubernetes-sigs/descheduler Helm chart 0.34.0.
+# Keep dry-run enabled until the eviction candidates have been reviewed.
+kind: CronJob
+schedule: '*/15 * * * *'
+concurrencyPolicy: Forbid
+startingDeadlineSeconds: 120
+activeDeadlineSeconds: 180
+successfulJobsHistoryLimit: 2
+failedJobsHistoryLimit: 3
+cmdOptions:
+  v: 3
+  dry-run: true
+deschedulerPolicyAPIVersion: descheduler/v1alpha2
+deschedulerPolicy:
+  maxNoOfPodsToEvictPerNode: 1
+  maxNoOfPodsToEvictPerNamespace: 2
+  maxNoOfPodsToEvictTotal: 3
+  profiles:
+    - name: ephemeral-workloads
+      pluginConfig:
+        - name: DefaultEvictor
+          args:
+            nodeFit: true
+            minReplicas: 2
+            minPodAge: 1h
+            noEvictionPolicy: Mandatory
+            labelSelector:
+              matchLabels:
+                janitor-managed: 'true'
+            podProtections:
+              defaultDisabled: []
+              extraEnabled: [PodsWithPVC, PodsWithoutPDB, PodsWithResourceClaims]
+        - name: RemovePodsViolatingNodeAffinity
+          args:
+            nodeAffinityType: [requiredDuringSchedulingIgnoredDuringExecution]
+            namespaces:
+              exclude: [kube-system, kube-public, kube-node-lease]
+        - name: RemovePodsViolatingNodeTaints
+          args:
+            namespaces:
+              exclude: [kube-system, kube-public, kube-node-lease]
+      plugins:
+        deschedule:
+          enabled: [RemovePodsViolatingNodeAffinity, RemovePodsViolatingNodeTaints]

@@ -1,0 +1,13 @@
+{
+  "account_id": "123456789012",
+  "region": "us-east-1",
+  "table_name": "ephemeral-janitor-state",
+  "dry_run": true,
+  "mode": "stop",
+  "ttl_hours": 24,
+  "grace_hours": 24,
+  "max_actions_per_run": 10,
+  "max_actions_per_window": 10,
+  "window_seconds": 3600,
+  "max_resources": 1000
+}
