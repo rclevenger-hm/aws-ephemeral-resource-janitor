@@ -1,0 +1,43 @@
+name: Validate
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: pip install -e '.[test]'
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: pytest -q
+      - run: cfn-lint template.yaml
+  deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: aws-actions/setup-sam@v2
+      - run: sam build
+        env:
+          SAM_CLI_TELEMETRY: '0'
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.17.3
+      - run: |
+          helm repo add descheduler https://kubernetes-sigs.github.io/descheduler/
+          helm template ephemeral-descheduler descheduler/descheduler \
+            --version 0.34.0 --namespace kube-system \
+            --values deploy/descheduler-values.yaml > /tmp/descheduler.yaml

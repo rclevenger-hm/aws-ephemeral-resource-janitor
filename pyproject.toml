@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aws-ephemeral-resource-janitor"
+version = "0.1.0"
+description = "Scheduled, opt-in AWS workload cleanup with durable safety controls"
+requires-python = ">=3.12"
+dependencies = ["boto3>=1.35,<2"]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<10", "moto[dynamodb]>=5,<6", "ruff>=0.11,<1", "cfn-lint>=1,<2"]
+
+[project.scripts]
+aws-janitor = "janitor.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
