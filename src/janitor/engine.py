@@ -122,8 +122,12 @@ def run(operator, event, aws, store, *, clock=None, remaining_ms=None):
             if requested is not None and iid not in requested:
                 continue
             state = store.get(f"resource#{iid}") or {"first_seen_at": iso(clock())}
-            # Persist observation but evaluate lifecycle only on a fresh read during execution.
-            reason_action, reason = lifecycle(instance, copy.deepcopy(state), policy, clock())
+            # Discovery cannot grant new stop/grace authority, but an observed loss of
+            # authority must survive even if discovery or later execution is interrupted.
+            observed_state = copy.deepcopy(state)
+            reason_action, reason = lifecycle(instance, observed_state, policy, clock())
+            if "stop" not in observed_state:
+                state.pop("stop", None)
             plan = {
                 "resource_id": iid,
                 "kind": instance.get("Kind", "ec2"),
@@ -211,6 +215,9 @@ def run(operator, event, aws, store, *, clock=None, remaining_ms=None):
                 fingerprint(latest, stopped=True) != fingerprint(fresh, stopped=True)
                 or latest["State"]["Name"] != fresh["State"]["Name"]
             ):
+                # Keep safety observations from this last read even though the changed
+                # resource will not be acted on during this run.
+                lifecycle(latest, state, policy, clock())
                 plan.update(outcome="skipped", reason="changed_before_action")
                 save_plan(plan, state)
                 continue
@@ -268,7 +275,7 @@ def run(operator, event, aws, store, *, clock=None, remaining_ms=None):
             plan.update(outcome="failed", reason=code)
             if code not in RESOURCE_ERRORS:
                 abort = code
-            save_plan(plan)
+            save_plan(plan, state)
     bad = any(p["outcome"] in ("failed", "unknown", "blocked") for p in plans)
     report["status"] = "failed" if abort else "partial" if bad else "complete"
     if abort:
