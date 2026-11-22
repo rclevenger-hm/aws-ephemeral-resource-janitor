@@ -72,6 +72,13 @@ stopped instance starts the grace clock. Tag, launch-time, or attachment changes
 invalidate stop authority; a changed stopped-state fingerprint resets the observation
 clock. Unrelated already-stopped instances are never adopted for termination.
 
+Observed invalidations are saved during discovery, even if a later discovery page,
+refresh, or budget check aborts the run. The final pre-action refresh also saves
+invalidations when it detects a changed resource. Restoring the old tags or settings
+does not restore the discarded stop authority. Discovery alone cannot start the
+recovery grace clock, and invalidation never clears unresolved action intent or
+charged budget reservations. Journal failures still retain the lock for recovery.
+
 Pause and inspect an expired workload during its recovery window. To rescue it,
 set `DoNotCleanup` or extend `ExpiresAt` **before** restarting. Restarts and extensions
 observed by the janitor invalidate prior termination history. A polling service cannot
